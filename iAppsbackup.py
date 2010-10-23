@@ -72,14 +72,14 @@ class AppsBackup(Apps):
             f.close()
         
         for name in names:
-            srcname = os.path.join(src, name)
+            srcname = '%s/%s' % (src, name)
             dstname = os.path.join(dst, name)
             if self.isdir(srcname):
-               self.copytree(srcname, dstname)
+                self.copytree(srcname, dstname)
             else:
-               self.sftp.get(srcname, dstname)
-               stats = self.sftp.stat(srcname)
-               os.utime(dstname, (stats.st_atime, stats.st_mtime))
+                self.sftp.get(srcname, dstname)
+                stats = self.sftp.stat(srcname)
+                os.utime(dstname, (stats.st_atime, stats.st_mtime))
 
 class AppsUpdate(Apps):
     def __init__(self, ssh):
@@ -101,7 +101,7 @@ class AppsUpdate(Apps):
             names.remove('%s.app' % (appname,))
 
         for name in names:
-            srcname = os.path.join(src, name)
+            srcname = '%s/%s' % (src, name)
             dstname = os.path.join(dst, name)
             if self.isdir(srcname):
                self.copytree(srcname, dstname)
@@ -146,7 +146,7 @@ class AppsRestore(Apps):
 
         for name in names:
             srcname = os.path.join(src, name)
-            dstname = os.path.join(dst, name)
+            dstcname = '%s/%s' % (dst, name)
             if os.path.isdir(srcname):
                self.copytree(srcname, dstname)
             else:
@@ -207,4 +207,3 @@ if __name__ == '__main__':
             folder = '%s%s' % (options.folder, revisions[rnumber])
             AppsRestore(ssh).start_restore(folder)
    
-    
