@@ -12,7 +12,7 @@ class Apps:
     def get_app_name(self, names):
         for filename in names:
             raw = filename.split('.app')
-            if len(raw) == 2:
+            if len(raw) == 2 and raw[1] == '':
                 return raw[0]
         return False
 
@@ -75,6 +75,8 @@ class AppsBackup(Apps):
             if self.isdir(srcname):
                 self.copytree(srcname, dstname)
             else:
+                if options.verbose:
+                    print srcname
                 self.sftp.get(srcname, dstname)
                 stats = self.sftp.stat(srcname)
                 os.utime(dstname, (stats.st_atime, stats.st_mtime))
@@ -104,17 +106,19 @@ class AppsUpdate(Apps):
             if self.isdir(srcname):
                self.copytree(srcname, dstname)
             else:
-               try:
-                   srcstats = self.sftp.stat(srcname)
-                   dststats = os.stat(dstname)
-                   if srcstats.st_mtime > dststats.st_mtime:
-                       self.sftp.get(srcname, dstname)
-                       print 'Updating ' + self.appname
-                       os.utime(dstname, (srcstats.st_atime, srcstats.st_mtime))
-               except OSError:
-                   self.sftp.get(srcname, dstname)
-                   stats = self.sftp.stat(srcname)
-                   os.utime(dstname, (stats.st_atime, stats.st_mtime))
+                try:
+                    srcstats = self.sftp.stat(srcname)
+                    dststats = os.stat(dstname)
+                    if srcstats.st_mtime > dststats.st_mtime:
+                        self.sftp.get(srcname, dstname)
+                        print 'Updating ' + self.appname
+                        os.utime(dstname, (srcstats.st_atime, srcstats.st_mtime))
+                except OSError:
+                    if options.verbose:
+                        print srcname
+                    self.sftp.get(srcname, dstname)
+                    stats = self.sftp.stat(srcname)
+                    os.utime(dstname, (stats.st_atime, stats.st_mtime))
 
 class AppsRestore(Apps):
     def __init__(self, ssh):
@@ -162,8 +166,8 @@ class AppsRestore(Apps):
             if os.path.isdir(srcname):
                 self.copytree(srcname, dstname)
             else:
-                print srcname
-                print dstname
+                if options.verbose:
+                    print srcname
                 self.sftp.put(srcname, dstname)
 
 if __name__ == '__main__':
@@ -175,6 +179,8 @@ if __name__ == '__main__':
     parser.add_option('-u', '--update', action='store_true')
     parser.add_option('-r', '--restore', action='store_true')
     parser.add_option('-f', '--folder', dest='folder', default='.', metavar='FOLDER')
+    parser.add_option('-V', '--verbose', action='store_true')
+
     (options, args) = parser.parse_args()
 
     if options.ip:
