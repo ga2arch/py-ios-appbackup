@@ -11,11 +11,9 @@ class Apps:
     
     def get_app_name(self, names):
         for filename in names:
-            raw1 = filename.split('.')
-            if len(raw1) == 2:
-                raw2 = filename.split('.')[-1].strip('\n')
-                if raw2 == 'app':
-                    return raw1[0]
+            raw = filename.split('.app')
+            if len(raw) == 2:
+                return raw[0]
         return False
 
     def isdir(self, directory):
@@ -33,7 +31,7 @@ class Apps:
         raw_apps = stdout.readlines()
         return len(raw_apps)
         
-    def get_apps_names(self, ssh):
+    def get_remote_apps(self, ssh):
         command = 'ls %s' % (self.appsdir,)
         apps = {}
         stdin, stdout, stderr = ssh.exec_command(command)
@@ -45,7 +43,7 @@ class Apps:
             for f in files:
                 if f.split('.')[-1].strip('\n') == 'app':
                     appname = f.split('.')[0]
-                    apps[raw_app] = appname
+                    apps[appname] = '%s/%s' % (self.appsdir, raw_app.rstrip('\n'))
         return apps
 
 class AppsBackup(Apps):
@@ -122,12 +120,30 @@ class AppsRestore(Apps):
     def __init__(self, ssh):
         self.ssh = ssh
         
-    def start_restore(self, src):
+    def start_restore(self, src, appname='all'):
         self.sftp = ssh.open_sftp()
-        self.copytree(src, self.appsdir)
+        remote_apps = self.get_remote_apps(self.ssh)
+        local_apps = self.get_local_apps(src)
+        for k in local_apps.keys():
+            if appname == 'all':
+                self.copytree(local_apps[k], remote_apps[k])
+            elif appname.lower() in k.lower():
+                self.copytree(local_apps[k], remote_apps[k])
         self.sftp.close()
         self.ssh.close()
-
+    
+    def get_local_apps(self, src):
+        names = os.listdir(src)
+        apps = {}
+        for name in names:
+            folder = os.path.join(src, name)
+            filepath = os.path.join(folder, 'appname')
+            f = open(filepath, 'r')
+            appname = f.readlines()[0].strip('\n')
+            f.close()
+            apps[appname] = folder
+        return apps
+            
     def copytree(self, src, dst):
         names = os.listdir(src)
         if 'appname' in names:
@@ -144,12 +160,11 @@ class AppsRestore(Apps):
             srcname = os.path.join(src, name)
             dstname = '%s/%s' % (dst, name)
             if os.path.isdir(srcname):
-               self.copytree(srcname, dstname)
+                self.copytree(srcname, dstname)
             else:
-               try:
-                   self.sftp.stat(dstname)
-               except IOError:
-                   self.sftp.put(srcname, dstname)
+                print srcname
+                print dstname
+                self.sftp.put(srcname, dstname)
 
 if __name__ == '__main__':
     parser = OptionParser()
@@ -201,5 +216,6 @@ if __name__ == '__main__':
                 print '%s) %s' % (e, d)
             rnumber = int(raw_input('Restore revision: '))
             folder = '%s/%s' % (options.folder, revisions[rnumber])
-            AppsRestore(ssh).start_restore(folder)
+            appname = raw_input('Restore Appname [all]: ')
+            AppsRestore(ssh).start_restore(folder, appname)
    
