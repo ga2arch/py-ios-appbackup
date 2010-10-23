@@ -138,15 +138,11 @@ class AppsRestore(Apps):
             names.remove('appname')
             
         if not self.isdir(dst):
-            folders = dst.split(self.appsdir)[-1].split('/')
-            if folders:
-                for e,folder in enumerate(folders):
-                    r = '%s%s/%s' % (self.appsdir, '/'.join(folders[:e]), folder)
-                    self.sftp.mkdir(r)
+            self.sftp.mkdir(dst)
 
         for name in names:
             srcname = os.path.join(src, name)
-            dstcname = '%s/%s' % (dst, name)
+            dstname = '%s/%s' % (dst, name)
             if os.path.isdir(srcname):
                self.copytree(srcname, dstname)
             else:
@@ -173,7 +169,7 @@ if __name__ == '__main__':
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
             ssh.connect(options.ip, username='root', password=options.password,
-                        timeout=10)
+                        timeout=15)
         except Exception:
             print 'Error connecting to your idevice, check the ip and/or password'
             sys.exit(1)
@@ -193,7 +189,7 @@ if __name__ == '__main__':
                 d = datetime.fromtimestamp(float(revision.split('_')[-1]))
                 print '%s) %s' % (e, d)
             rnumber = int(raw_input('Update revision: '))
-            folder = '%s%s' % (options.folder, revisions[rnumber])
+            folder = '%s/%s' % (options.folder, revisions[rnumber])
             AppsUpdate(ssh).start_update(folder)
             
         if options.restore:
@@ -204,6 +200,6 @@ if __name__ == '__main__':
                 d = datetime.fromtimestamp(float(revision.split('_')[-1]))
                 print '%s) %s' % (e, d)
             rnumber = int(raw_input('Restore revision: '))
-            folder = '%s%s' % (options.folder, revisions[rnumber])
+            folder = '%s/%s' % (options.folder, revisions[rnumber])
             AppsRestore(ssh).start_restore(folder)
    
